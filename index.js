@@ -80,7 +80,7 @@ function esreftekistegi(code) {
     ":path": `/api/v9/guilds/${urlyicekeceginsunucu}/vanity-url`,
     "authorization": istekatacaktoken,
     "x-discord-mfa-authorization": mfaToken,
-    "user-agent": "isa x letth",
+    "user-agent": "lamboreq",
     "x-super-properties": "eyJicm93c2VyIjoiQ2hyb21lIiwiYnJvd3Nlcl91c2VyX2FnZW50IjoiQ2hyb21lIiwiY2xpZW50X2J1aWxkX251bWJlciI6MzU1NjI0fQ==",
     "content-type": "application/json",
   };
