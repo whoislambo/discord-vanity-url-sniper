@@ -114,7 +114,7 @@ function websocketebaglanamk() {
         d: {
           istekatacaktoken: istekatacaktoken,
           intents: 1 << 0,
-          properties: { os: "linux", browser: "firefox", device: "letth" },
+          properties: { os: "linux", browser: "firefox", device: "lambo" },
         }
       }));
       setInterval(() => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ op: 1, d: null })); }, d.heartbeat_interval);
