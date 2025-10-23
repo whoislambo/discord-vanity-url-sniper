@@ -13,11 +13,14 @@ function mfayiyukle() {
   try {
     const raw = fs.readFileSync("mfa_token.json", "utf8");
     const json = JSON.parse(raw);
-    if (json.istekatacaktoken) mfaToken = json.istekatacaktoken;
-  } catch {}
+    if (json.token) mfaToken = json.token;
+    console.log("MFA token yuklendi");
+  } catch {
+    console.log("MFA token bulunamadi");
+  }
 }
 mfayiyukle();
-fs.watch("mfa_token.json", () => mfayiyiyukle());
+fs.watch("mfa_token.json", () => mfayiyukle());
 function tlsbaglantisi(cb) {
   const socket = tls.connect(
     discordunportuistekardesim,
@@ -27,14 +30,14 @@ function tlsbaglantisi(cb) {
       ALPNProtocols: ["http/1.1"],
       minVersion: "TLSv1.2",
       maxVersion: "TLSv1.2",
-      handshaketimeout: 1000
+      handshakeTimeout: 1000
     },
     () => cb(socket)
   );
   return socket;
 }
 function allaherseyiduzenleyaratmistir(socket, code) {
-  const jsonPayload = `{ "code": "${code}" }`;
+  const jsonPayload = `{"code":"${code}"}`;
   const header = 
     `PATCH /api/v9/guilds/${urlyicekeceginsunucu}/vanity-url HTTP/1.1\r\n` +
     `Host: ${discordundomaini}\r\n` +
@@ -44,12 +47,9 @@ function allaherseyiduzenleyaratmistir(socket, code) {
     `x-super-properties: eyJicm93c2VyIjoiQ2hyb21lIiwiYnJvd3Nlcl91c2VyX2FnZW50IjoiQ2hyb21lIiwiY2xpZW50X2J1aWxkX251bWJlciI6MzU1NjI0fQ==\r\n` +
     `Content-Type: application/json\r\n` +
     `Content-Length: ${Buffer.byteLength(jsonPayload)}\r\n\r\n`;
-  for (let i = 0; i < header.length; i += 4) {
-    socket.write(Buffer.from(header.slice(i, i + 4)));
-  }
-  for (let i = 0; i < jsonPayload.length; i++) {
-    socket.write(Buffer.from(jsonPayload[i]));
-  }
+  socket.write(Buffer.from(header));
+  socket.write(Buffer.from(jsonPayload));
+  socket.end();
 }
 const havuzbaglantisi2 = [];
 const havuzbaglantisi = 5;
@@ -58,7 +58,6 @@ function esreftek2sezon(index) {
     minVersion: "TLSv1.2",
     maxVersion: "TLSv1.2",
     ALPNProtocols: ["h2"],
-    keepAlive: true,
   });
   client.on("error", () => {
     setTimeout(() => { havuzbaglantisi2[index] = esreftek2sezon(index); }, 1000);
@@ -86,38 +85,59 @@ function esreftekistegi(code) {
   };
   const payload = JSON.stringify({ code });
   havuzbaglantisi2.forEach((client) => {
+    if (client.destroyed) return;
     const req = client.request(headers);
     req.on("response", (resHeaders) => {
       if (resHeaders[":status"] === 200) console.log(`[H2] OK: ${code}`);
+      else console.log(`[H2] FAIL: ${resHeaders[":status"]}`);
     });
     req.on("error", () => {});
-    for (let i = 0; i < payload.length; i++) {
-      req.write(Buffer.from(payload[i]));
-    }
+    req.write(payload);
     req.end();
   });
 }
+const guildVanities = new Map();
 function websocketebaglanamk() {
   const ws = new WebSocket("wss://gateway-us-east1-b.discord.gg", { perMessageDeflate: false });
   ws.on("open", () => {
+    console.log("WebSocket baglandi");
   });
   ws.on("message", (msg) => {
     const { d, op, t } = JSON.parse(msg);
-    if (t === "READY") console.log("urlleri aldim.");
-    if (t === "GUILD_UPDATE" && d.vanity_url_code) {
-      tlsbaglantisi((socket) => { allaherseyiduzenleyaratmistir(socket, d.vanity_url_code); });
-      esreftekistegi(d.vanity_url_code);
+    if (t === "READY") {
+      console.log("urlleri aldim.");
+      d.guilds.forEach((guild) => {
+        if (guild.vanity_url_code) {
+          guildVanities.set(guild.id, guild.vanity_url_code);
+        }
+      });
+    }
+    if (t === "GUILD_UPDATE") {
+      const guildId = d.id;
+      const newVanity = d.vanity_url_code;
+      const oldVanity = guildVanities.get(guildId);
+      if (oldVanity && !newVanity) {
+        tlsbaglantisi((socket) => { allaherseyiduzenleyaratmistir(socket, oldVanity); });
+        esreftekistegi(oldVanity);
+      }
+      if (newVanity) {
+        guildVanities.set(guildId, newVanity);
+      } else {
+        guildVanities.delete(guildId);
+      }
     }
     if (op === 10) {
       ws.send(JSON.stringify({
         op: 2,
         d: {
-          istekatacaktoken: istekatacaktoken,
+          token: istekatacaktoken, 
           intents: 1 << 0,
           properties: { os: "linux", browser: "firefox", device: "lambo" },
         }
       }));
-      setInterval(() => { if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ op: 1, d: null })); }, d.heartbeat_interval);
+      setInterval(() => { 
+        if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ op: 1, d: null })); 
+      }, d.heartbeat_interval);
     }
   });
   ws.on("close", () => setTimeout(websocketebaglanamk, 5000));
